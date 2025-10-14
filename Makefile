@@ -133,7 +133,7 @@ docker_win_clean:
 docker_linux_clean:
 	docker image rm $(LINUX64DOCKER)
 
-docker_build_win:
+docker_build_win: docker_win
 	$(call RUN_DOCKER,windows,amd64,amd64,$(WINDOCKERIMAGE),$(call GO_BUILD,,1,$(REL_WINDOWS_BIN)),,)
 	@if [ -e $(SRC)/resource.syso ]; then \
 		rm $(SRC)/resource.syso; \
