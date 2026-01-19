@@ -1,1 +1,4 @@
 benchy-*
+release/
+src/resources.qrc.go
+src/resources.qrc.rcc

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Benchy
+Exec=benchy-linux
+Icon=Benchy
+Type=Application
+Categories=Utility;

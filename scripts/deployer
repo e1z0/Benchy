@@ -1,5 +1,11 @@
 #!/bin/bash
 
+LOCKFILE="/var/lock/deployer.lock"   
+exec 9>"$LOCKFILE"                # open fd 9 for writing
+flock -n 9 || { echo "Already running"; exit 1; }
+# record pid 
+echo "$$" 1>&9
+
 if ! command -v make >/dev/null 2>&1; then
   echo "ERROR: 'make' is required but was not found in PATH." >&2
   exit 1
