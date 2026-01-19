@@ -28,6 +28,7 @@ import (
 	"github.com/e1z0/Benchy/internal/benchmarks"
 
 	"github.com/mappu/miqt/qt"
+	"github.com/mappu/miqt/qt/mainthread"
 )
 
 type testFn func(ctx context.Context, dur time.Duration, threads int) benchmarks.Result
@@ -73,71 +74,81 @@ func RunSuiteDialog(parent *qt.QWidget, mode string, threads int, dur time.Durat
 	dlg.Show()
 
 	res := RunResult{}
-	canceled := false
 	finished := false
+	
+	ctx, cancel := context.WithCancel(context.Background())
+
 	btnCancel.OnClicked(func() {
 		if finished {
 			dlg.Accept() // <- actually close the modal dialog
 			return
 		}
-		canceled = true // <- while running, this signals the loop to cancel the current test
+		cancel() // <- signal cancellation
 	})
-	for i, t := range tests {
-		if canceled {
-			break
-		}
-		cur.SetText(fmt.Sprintf("Test %d/%d — %s", i+1, len(tests), t.Name))
-		log.AppendPlainText(fmt.Sprintf("> %s", t.Name))
 
-		ctx, cancel := context.WithCancel(context.Background())
-		done := make(chan struct{})
+	go func() {
+		defer cancel()
 
-		go func() {
-			r := t.Run(ctx, dur, threads)
-			res.Results = append(res.Results, r)
-			close(done)
-		}()
+		for i, t := range tests {
+			if ctx.Err() != nil {
+				break
+			}
 
-		start := time.Now()
-		tick := time.NewTicker(100 * time.Millisecond)
-		per.SetValue(0)
+			mainthread.Wait(func() {
+				cur.SetText(fmt.Sprintf("Test %d/%d — %s", i+1, len(tests), t.Name))
+				log.AppendPlainText(fmt.Sprintf("> %s", t.Name))
+				per.SetValue(0)
+			})
 
-	loop:
-		for {
-			select {
-			case <-done:
-				per.SetValue(100)
-				overall.SetValue((i + 1) * 100)
-				break loop
-			case <-tick.C:
-				p := int(float64(time.Since(start)) / float64(dur) * 100)
-				if p > 99 {
-					p = 99
-				}
-				if p < 0 {
-					p = 0
-				}
-				per.SetValue(p)
-				overall.SetValue(i*100 + p)
-				if canceled {
-					cancel()
+			// Run the test in a separate goroutine so we can update progress
+			testDone := make(chan benchmarks.Result, 1)
+			go func() {
+				testDone <- t.Run(ctx, dur, threads)
+			}()
+
+			start := time.Now()
+			tick := time.NewTicker(100 * time.Millisecond)
+
+		loop:
+			for {
+				select {
+				case r := <-testDone:
+					res.Results = append(res.Results, r)
+					mainthread.Wait(func() {
+						per.SetValue(100)
+						overall.SetValue((i + 1) * 100)
+					})
+					break loop
+				case <-tick.C:
+					p := int(float64(time.Since(start)) / float64(dur) * 100)
+					if p > 99 { p = 99 }
+					if p < 0 { p = 0 }
+					
+					mainthread.Wait(func() {
+						per.SetValue(p)
+						overall.SetValue(i*100 + p)
+					})
+				case <-ctx.Done():
+					break loop
 				}
 			}
+			tick.Stop()
 		}
-		tick.Stop()
-		cancel()
-		qt.QCoreApplication_ProcessEvents()
-	}
 
-	if canceled {
-		res.Canceled = true
-		log.AppendPlainText("Canceled by user.")
-	} else {
-		log.AppendPlainText("Completed.")
-	}
-	cur.SetText("Finished.")
-	btnCancel.SetText("Close")
-	finished = true
+		mainthread.Wait(func() {
+			if ctx.Err() != nil {
+				res.Canceled = true
+				log.AppendPlainText("Canceled by user.")
+				cur.SetText("Canceled.")
+			} else {
+				log.AppendPlainText("Completed.")
+				cur.SetText("Finished.")
+			}
+			btnCancel.SetText("Close")
+			finished = true
+		})
+	}()
+
 	dlg.Exec()
 	return res
 }
