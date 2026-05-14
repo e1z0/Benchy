@@ -3,8 +3,8 @@
 1 ICON "icon.ico"
 
 1 VERSIONINFO
-FILEVERSION     0,9,0,215
-PRODUCTVERSION  0,9,0,215
+FILEVERSION     0,9,0,216
+PRODUCTVERSION  0,9,0,216
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x0L
 FILEOS          0x4L
@@ -17,12 +17,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "e1z0"
             VALUE "FileDescription",  "Benchy - cross-platform system benchmarking tool written in Go and Qt"
-            VALUE "FileVersion",      "0.9.0.215"
+            VALUE "FileVersion",      "0.9.0.216"
             VALUE "InternalName",     "Benchy"
             VALUE "LegalCopyright",   "Copyright (c) 2025 Justinas K"
             VALUE "OriginalFilename", "Benchy.exe"
             VALUE "ProductName",      "Benchy"
-            VALUE "ProductVersion",   "0.9.0.215"
+            VALUE "ProductVersion",   "0.9.0.216"
         END
     END
     BLOCK "VarFileInfo"
